@@ -1,15 +1,10 @@
-import gpu_rec
-
+import argparse
 import sys
 
-from game import Game 
-from player import Player
+import numpy as np
+
+from game import Game
 from player_ai import SharedAI
-
-import argparse
-
-import numpy as np 
-
 
 
 def main(*args, **kwargs):
@@ -31,7 +26,7 @@ def main(*args, **kwargs):
 	total_turns = []
 	for k in range(25):
 		current_cycle = []
-		print '---k=%d---' % k
+		print('---k=%d---' % k)
 		for j in range(10):
 			sys.stdout.write('in training round j=%d' % j)
 			sys.stdout.flush()
@@ -48,8 +43,8 @@ def main(*args, **kwargs):
 			for player in players:
 				player.save_ai()
 		total_turns.append(current_cycle)
-		print 'cycle #%d had mean turns of %.01f, sd: %.03f' % (k, np.mean(current_cycle), np.std(current_cycle))
-		print 'flushed history'
+		print('cycle #%d had mean turns of %.01f, sd: %.03f' % (k, np.mean(current_cycle), np.std(current_cycle)))
+		print('flushed history')
 	means = [float(sum(x))/500 for x in total_turns]
 	with open('machikoro.log','a') as f:
 		f.write(name + '\n+++')
@@ -59,7 +54,8 @@ def main(*args, **kwargs):
 			print 'cycle #%d mean: %.01f, sd:%.03f' % (i, means[i], np.std(total_turns[i]))
 			f.write('cycle #%d mean: %.01f, sd:%.03f\n' % (i, means[i], np.std(total_turns[i])) )
 		f.write('---\n')
-	print 'done!'
+	print('done!')
+
 
 if __name__=='__main__':
 	parser = argparse.ArgumentParser(description = 'teach a computer to play Machi Koro')
@@ -80,5 +76,5 @@ if __name__=='__main__':
 	'shared_ai':getattr(args, 'shared_ai'),
 	'game_record_filename':getattr(args,'game_record_filename'),
 	'prob_mod':getattr(args,'prob_mod')}
-	print kwargs
+	print(kwargs)
 	main(**kwargs)
