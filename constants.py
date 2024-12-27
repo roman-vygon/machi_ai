@@ -1,127 +1,128 @@
 from frozendict import frozendict
+from Building import Building
 
 starting_buildings = frozendict(
     {
-        "wheat_field": (1, 0),
-        "bakery": (1, 0),
+        Building.WHEAT_FIELD: (1, 0),
+        Building.BAKERY: (1, 0)
     }
 )
 
 building_cost: frozendict = frozendict(
     {
-        "wheat_field": 1,
-        "apple_orchard": 3,
-        "ranch": 1,
-        "forest": 3,
-        "mine": 6,
-        "fruit_and_vegetable_market": 2,
-        "cheese_factory": 5,
-        "furniture_factory": 3,
-        "bakery": 1,
-        "convenience_store": 2,
-        "cafe": 2,
-        "family_restaurant": 3,
-        "stadium": 6,
-        "tv_station": 7,
-        "business_center": 8,
-        "shopping_mall": 10,
-        "amusement_park": 16,
-        "radio_tower": 22,
-        "airport": 30,
-        "train_station": 4,
-        "flower_garden": 2,
-        "mackerel_boat": 2,
-        "tuna_boat": 5,
-        "flower_shop": 1,
-        "food_warehouse": 2,
-        "sushi_bar": 2,
-        "pizza_joint": 1,
-        "hamburger_stand": 1,
-        "publisher": 5,
-        "tax_office": 4,
-        "harbor": 2,
+        Building.WHEAT_FIELD: 1,
+        Building.APPLE_ORCHARD: 3,
+        Building.RANCH: 1,
+        Building.FOREST: 3,
+        Building.MINE: 6,
+        Building.FRUIT_AND_VEGETABLE_MARKET: 2,
+        Building.CHEESE_FACTORY: 5,
+        Building.FURNITURE_FACTORY: 3,
+        Building.BAKERY: 1,
+        Building.CONVENIENCE_STORE: 2,
+        Building.CAFE: 2,
+        Building.FAMILY_RESTAURANT: 3,
+        Building.STADIUM: 6,
+        Building.TV_STATION: 7,
+        Building.BUSINESS_CENTER: 8,
+        Building.SHOPPING_MALL: 10,
+        Building.AMUSEMENT_PARK: 16,
+        Building.RADIO_TOWER: 22,
+        Building.AIRPORT: 30,
+        Building.TRAIN_STATION: 4,
+        Building.FLOWER_GARDEN: 2,
+        Building.MACKEREL_BOAT: 2,
+        Building.TUNA_BOAT: 5,
+        Building.FLOWER_SHOP: 1,
+        Building.FOOD_WAREHOUSE: 2,
+        Building.SUSHI_BAR: 2,
+        Building.PIZZA_JOINT: 1,
+        Building.HAMBURGER_STAND: 1,
+        Building.PUBLISHER: 5,
+        Building.TAX_OFFICE: 4,
+        Building.HARBOR: 2
     }
 )
 
 activation_dict = frozendict(
     {
-        "wheat_field": {"roll": (1,), "value": 1},
-        "apple_orchard": {"roll": (10,), "value": 3},
-        "ranch": {"roll": (2,), "value": 1},
-        "forest": {"roll": (5,), "value": 1},
-        "mine": {"roll": (9,), "value": 5},
-        "fruit_and_vegetable_market": {"roll": (11, 12), "value": "special"},
-        "cheese_factory": {"roll": (7,), "value": "special"},
-        "furniture_factory": {"roll": (8,), "value": "special"},
-        "bakery": {"roll": (2, 3), "value": 1},
-        "convenience_store": {"roll": (4,), "value": 3},
-        "cafe": {"roll": (3,), "value": 1},
-        "family_restaurant": {"roll": (9, 10), "value": 2},
-        "stadium": {"roll": (6,), "value": "special"},
-        "tv_station": {"roll": (6,), "value": "special"},
-        "business_center": {"roll": (6,), "value": "special"},
-        "flower_garden": {"roll": (4,), "value": 1},
-        "mackerel_boat": {"roll": (8,), "value": 3},
-        "tuna_boat": {"roll": (12, 13, 14), "value": "special"},
-        "flower_shop": {"roll": (6,), "value": "special"},
-        "food_warehouse": {"roll": (12, 13), "value": "special"},
-        "sushi_bar": {"roll": (1,), "value": "special"},
-        "pizza_joint": {"roll": (7,), "value": 1},
-        "hamburger_stand": {"roll": (8,), "value": 1},
-        "publisher": {"roll": (7,), "value": "special"},
-        "tax_office": {"roll": (8, 9), "value": "special"},
+        Building.WHEAT_FIELD: {"roll": (1,), "value": 1},
+        Building.APPLE_ORCHARD: {"roll": (10,), "value": 3},
+        Building.RANCH: {"roll": (2,), "value": 1},
+        Building.FOREST: {"roll": (5,), "value": 1},
+        Building.MINE: {"roll": (9,), "value": 5},
+        Building.FRUIT_AND_VEGETABLE_MARKET: {"roll": (11, 12), "value": "special"},
+        Building.CHEESE_FACTORY: {"roll": (7,), "value": "special"},
+        Building.FURNITURE_FACTORY: {"roll": (8,), "value": "special"},
+        Building.BAKERY: {"roll": (2, 3), "value": 1},
+        Building.CONVENIENCE_STORE: {"roll": (4,), "value": 3},
+        Building.CAFE: {"roll": (3,), "value": 1},
+        Building.FAMILY_RESTAURANT: {"roll": (9, 10), "value": 2},
+        Building.STADIUM: {"roll": (6,), "value": "special"},
+        Building.TV_STATION: {"roll": (6,), "value": "special"},
+        Building.BUSINESS_CENTER: {"roll": (6,), "value": "special"},
+        Building.FLOWER_GARDEN: {"roll": (4,), "value": 1},
+        Building.MACKEREL_BOAT: {"roll": (8,), "value": 3},
+        Building.TUNA_BOAT: {"roll": (12, 13, 14), "value": "special"},
+        Building.FLOWER_SHOP: {"roll": (6,), "value": "special"},
+        Building.FOOD_WAREHOUSE: {"roll": (12, 13), "value": "special"},
+        Building.SUSHI_BAR: {"roll": (1,), "value": "special"},
+        Building.PIZZA_JOINT: {"roll": (7,), "value": 1},
+        Building.HAMBURGER_STAND: {"roll": (8,), "value": 1},
+        Building.PUBLISHER: {"roll": (7,), "value": "special"},
+        Building.TAX_OFFICE: {"roll": (8, 9), "value": "special"},
 
     }
 )
 
 landmarks_tuple = (
-    "train_station",
-    "shopping_mall",
-    "amusement_park",
-    "radio_tower",
-    "harbor",
-    "airport",
+    Building.TRAIN_STATION,
+    Building.SHOPPING_MALL,
+    Building.AMUSEMENT_PARK,
+    Building.RADIO_TOWER,
+    Building.HARBOR,
+    Building.AIRPORT,
 )
 
 major_establishments_tuple = (
-    "stadium",
-    "tv_station",
-    "business_center",
-    "publisher",
-    "tax_office",
+    Building.STADIUM,
+    Building.TV_STATION,
+    Building.BUSINESS_CENTER,
+    Building.PUBLISHER,
+    Building.TAX_OFFICE,
 )
 
 primary_industry_dict = frozendict(
     {
-        "wheat_field": "wheat",
-        "ranch": "cow",
-        "forest": "gear",
-        "mine": "gear",
-        "apple_orchard": "wheat",
-        "flower_garden": "wheat",
-        "mackerel_boat": "boat",
-        "tuna_boat": "boat",
+        Building.WHEAT_FIELD: "wheat",
+        Building.RANCH: "cow",
+        Building.FOREST: "gear",
+        Building.MINE: "gear",
+        Building.APPLE_ORCHARD: "wheat",
+        Building.FLOWER_GARDEN: "wheat",
+        Building.MACKEREL_BOAT: "boat",
+        Building.TUNA_BOAT: "boat",
     }
 )
 
 secondary_industry_dict = frozendict(
     {
-        "bakery": "bread",
-        "convenience_store": "bread",
-        "cheese_factory": "factory",
-        "furniture_factory": "factory",
-        "fruit_and_vegetable_market": "fruit",
-        "flower_shop": "bread",
-        "food_warehouse": "factory",
+        Building.BAKERY: "bread",
+        Building.CONVENIENCE_STORE: "bread",
+        Building.CHEESE_FACTORY: "factory",
+        Building.FURNITURE_FACTORY: "factory",
+        Building.FRUIT_AND_VEGETABLE_MARKET: "fruit",
+        Building.FLOWER_SHOP: "bread",
+        Building.FOOD_WAREHOUSE: "factory",
     }
 )
 
 restaurants_tuple = (
-    "cafe",
-    "family_restaurant",
-    "sushi_bar",
-    "pizza_joint",
-    "hamburger_stand",
+    Building.CAFE,
+    Building.FAMILY_RESTAURANT,
+    Building.SUSHI_BAR,
+    Building.PIZZA_JOINT,
+    Building.HAMBURGER_STAND,
 )
 
 player_limit = {landmark: 1 for landmark in landmarks_tuple}
@@ -139,15 +140,7 @@ for building in (
 ):
     player_limit[building] = 6
 
-BUILDING_ORDER = sorted(building_cost.keys())
-
-BUILDING_INDEX = {key: i for i, key in enumerate(BUILDING_ORDER)}
 
 # need to make sure vector is consistent
-BUILDING_VECTOR_TEMPLATE = [[0 for _ in range(player_limit[key] + 1)] for key in BUILDING_ORDER]
+BUILDING_VECTOR_TEMPLATE = [[0 for _ in range(player_limit[key] + 1)] for key in Building]
 
-SWAPPABLE_BUILDING_ORDER = [building for building in BUILDING_ORDER if building not in
-                            ('stadium', 'tv_station', 'business_center', 'shopping_mall', 'station', 'amusement_park',
-                             'radio_tower', 'airport', 'harbor', 'tax_office', 'publisher')]
-
-SWAPPABLE_BUILDING_INDEX = {key: i for i, key in enumerate(SWAPPABLE_BUILDING_ORDER)}
