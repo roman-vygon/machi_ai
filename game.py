@@ -1,8 +1,8 @@
 import csv
 import math
-import math
 import os
 import random
+from copy import deepcopy
 from typing import Union
 
 from frozendict import frozendict
@@ -93,10 +93,10 @@ class Game(object):
             self.players = [Player(self, i, name) for i in range(4)]
             self.initialize_player_ai()
         else:
-            shuffle(pre_existing_players)
+            random.shuffle(pre_existing_players)
             self.players = [player.reset_game(self, i) for i, player in enumerate(pre_existing_players)]
 
-        self.building_supply = deepcopy(supply_buildings)
+
         self.id = id
         self.name = name
         # may be used for weighting

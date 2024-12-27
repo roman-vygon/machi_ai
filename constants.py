@@ -123,7 +123,21 @@ restaurants_tuple = (
     "pizza_joint",
     "hamburger_stand",
 )
-player_limit = frozendict({})
+
+player_limit = {landmark: 1 for landmark in landmarks_tuple}
+player_limit = {
+    **player_limit,
+    **{
+        major_establishment: 1
+        for major_establishment in major_establishments_tuple
+    },
+}
+for building in (
+        list(primary_industry_dict.keys())
+        + list(secondary_industry_dict.keys())
+        + list(restaurants_tuple)
+):
+    player_limit[building] = 6
 
 BUILDING_ORDER = sorted(building_cost.keys())
 

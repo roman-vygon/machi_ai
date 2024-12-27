@@ -1,11 +1,12 @@
+from copy import deepcopy
 from functools import reduce
 
 import numpy as np
 from numpy.random import choice as rchoice
-from pydantic import BaseModel
-from pydantic.fields import Field
 
 from EstablishmentCount import EstablishmentCount
+from constants import BUILDING_VECTOR_TEMPLATE, BUILDING_ORDER
+from player_ai import PlayerAI
 
 use_max_probability = True
 
@@ -37,13 +38,18 @@ def choose_from_probs(probs, constraint_mask=None):
     return choice[0]
 
 
-class Player(BaseModel, validate_assignment=True):
-    id: int = Field(frozen=True, strict=True)
-    coins: int = Field(ge=0, strict=True)
+class Player:
+    id: int
+    coins: int
     major_establishments: dict[str, bool]
     landmarks: dict[str, bool]
     establishments: dict[str, EstablishmentCount]
     is_first_turn: bool = True
+    AI: PlayerAI
+
+    def __init__(self):
+        super().__init__()
+        self.AI = PlayerAI(self)
 
     def serialize_data(self):
         """this vectorizes the number of buildings in each category a player has;
@@ -58,6 +64,7 @@ class Player(BaseModel, validate_assignment=True):
     def complete_serialize(self):
         """this returns the complete and sufficient game state based on the player whose turn it is"""
         return reduce(list.__add__, [self.get_next_player(offset).serialize_data() for offset in range(4)])
+
 
 """
 class Player(object):
@@ -187,40 +194,7 @@ class Player(object):
             self.AI.shared.swap_history_win = []
             self.AI.shared.reroll_history_win = []
 
-    def load_ai(self, use_shared=False):
-        ""
-        make sure to call this before created a SharedAI object so that the new AIs are used for the non-base player
-        ""
-        if use_shared or self.shared_ai:
-            self.AI.dice_ai = load_model(self.name + '_dice_ai.h5')
-            self.AI.reroll_ai = load_model(self.name + '_reroll_ai.h5')
-            self.AI.steal_ai = load_model(self.name + '_steal_ai.h5')
-            self.AI.swap_ai = load_model(self.name + '_swap_ai.h5')
-            self.AI.buy_ai = load_model(self.name + '_buy_ai.h5')
-        else:
-            self.AI.dice_ai = load_model(self.name + '_dice_ai_%d.h5' % self.id)
-            self.AI.reroll_ai = load_model(self.name + '_reroll_ai_%d.h5' % self.id)
-            self.AI.steal_ai = load_model(self.name + '_steal_ai_%d.h5' % self.id)
-            self.AI.swap_ai = load_model(self.name + '_swap_ai_%d.h5' % self.id)
-            self.AI.buy_ai = load_model(self.name + '_buy_ai_%d.h5' % self.id)
-        print 'loaded ai'
-
-    def save_ai(self):
-        #dice
-        ai = self.AI 
-        if self.shared_ai:
-            ai.dice_ai.save(self.name + '_dice_ai.h5')
-            ai.reroll_ai.save(self.name + '_reroll_ai.h5')
-            ai.steal_ai.save(self.name + '_steal_ai.h5')
-            ai.swap_ai.save(self.name + '_swap_ai.h5')
-            ai.buy_ai.save(self.name + '_buy_ai.h5')
-        else:
-            ai.dice_ai.save(self.name + '_dice_ai_%d.h5' % self.id)
-            ai.reroll_ai.save(self.name + '_reroll_ai_%d.h5' % self.id)
-            ai.steal_ai.save(self.name + '_steal_ai_%d.h5' % self.id)
-            ai.swap_ai.save(self.name + '_swap_ai_%d.h5' % self.id)
-            ai.buy_ai.save(self.name + '_buy_ai_%d.h5' % self.id)
-        print 'saved AI'
+    
 
 
     def get_next_player(self, offset=1):
@@ -382,7 +356,7 @@ class Player(object):
                     self.game.game_record_file.write('STADIUM: player %d (now has %d) receives %d coins from player %d (now has %d)\n' % 
                         (self.order, self.coins, coins_to_steal, target_player.order, target_player.coins))
 
-        #decide from whombst to steal
+        #decide from whomst to steal
         if self.buildings.tv_station:
             self.decide_steal()
             self.AI.record_steal()
