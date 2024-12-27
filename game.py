@@ -2,13 +2,13 @@ import csv
 import math
 import os
 import random
-from copy import deepcopy
 from typing import Union
 
 from frozendict import frozendict
 
-from EstablishmentCount import EstablishmentCount
-from constants import activation_dict, BUILDING_ORDER
+from Building import Building
+from BuildingType import BuildingType
+from constants import activation_dict, player_limit
 from constants import starting_buildings, landmarks_tuple, major_establishments_tuple, restaurants_tuple, \
     secondary_industry_dict, primary_industry_dict, building_cost
 from player import Player
@@ -22,20 +22,18 @@ class Game(object):
             starting_builds: frozendict = starting_buildings,
             starting_major_establishments: tuple = (),
     ) -> Player:
-        return Player(
-            id=player_id,
-            coins=0,
-            major_establishments={
-                key: True if key in starting_major_establishments else False
-                for key in major_establishments_tuple
-            },
-            landmarks={landmark: False for landmark in landmarks_tuple},
-            establishments={
-                key: EstablishmentCount(working=val[0])
-                for key, val in starting_builds.items()
-            },
-            is_first_turn=True,
-        )
+        player = Player()
+        player.id = player_id
+        player.buildings = {}
+        for major_establishment in major_establishments_tuple:
+            player.buildings[major_establishment] = 1 if major_establishment in starting_major_establishments else 0
+        for landmark in landmarks_tuple:
+            player.buildings[landmark] = 0
+        for establishment in starting_builds:
+            player.buildings[establishment] = starting_builds[establishment]
+        player.coins = 0
+        player.is_first_turn = True
+        return player
 
     @staticmethod
     def _init_market(n_players: int = 2) -> dict:
@@ -68,7 +66,7 @@ class Game(object):
             for i in range(n_players)
         }
         self.market = self._init_market(n_players=n_players)
-        self.current_player = 0
+        self.current_player_id = 0
         self.current_turn = 0
 
         if 'full_record' in options and options['full_record'] != '':
@@ -90,12 +88,11 @@ class Game(object):
         else:
             self.prob_mod = options['prob_mod']
         if not pre_existing_players:
-            self.players = [Player(self, i, name) for i in range(4)]
+            self.players = [Player(self, i, name) for i in range(5)]
             self.initialize_player_ai()
         else:
             random.shuffle(pre_existing_players)
             self.players = [player.reset_game(self, i) for i, player in enumerate(pre_existing_players)]
-
 
         self.id = id
         self.name = name
@@ -144,8 +141,8 @@ class Game(object):
                 self.game_record_file.write('+++++++++++++++++++++')
                 self.game_record_file.write("PLAYER %d\n" % player.order)
                 self.game_record_file.write("TOTAL COINS: %d\n" % player.coins)
-                for building in BUILDING_ORDER:
-                    self.game_record_file.write("%s COUNT: %d\n" % (building.upper(), player.buildings[building]))
+                for building in Building:
+                    self.game_record_file.write("%s COUNT: %d\n" % (building, player.buildings[building]))
             self.game_record_file.write('--------------------------------\n')
             self.game_record_file.close()
         if self.full_record:
@@ -186,20 +183,6 @@ class Game(object):
     def get_next_player(self, player, offset=1):
         return self.players[(player.order + offset) % 4]
 
-    def get_target_player_id(self, current_player_id: int) -> int:
-        # just take from the richest
-        target_player_id = sorted(
-            [
-                (player_id, self.players[player_id].coins)
-                for player_id in self.players
-                if player_id != current_player_id
-            ],
-            key=lambda a: a[1],
-            reverse=True,
-        )
-        target_player_id = target_player_id[0][0]
-        return target_player_id
-
     def get_reverse_player_order(self, player_id: int) -> list:
         order = [player_id - 1 if player_id - 1 >= 0 else self.n_players - 1]
         for _ in range(self.n_players - 1):
@@ -220,180 +203,166 @@ class Game(object):
 
     def activate_special_card(
             self,
-            card_name: str,
+            card_name: Building,
             current_player_id: int,
-            building_info: EstablishmentCount,
+            building_count: int,
             **kwargs,
     ) -> None:
+        current_player = self.players[current_player_id]
+
         match card_name:
-            case "fruit_and_vegetable_market":
+            case Building.FRUIT_AND_VEGETABLE_MARKET:
                 total_wheat_buildings = 0
-                for b_name, b_info in self.players[
-                    current_player_id
-                ].establishments.items():
-                    if primary_industry_dict.get(b_name, "") == "wheat":
-                        total_wheat_buildings += b_info.working
+                for b_name, b_count in current_player.buildings.items():
+                    if primary_industry_dict.get(b_name, "") == BuildingType.WHEAT:
+                        total_wheat_buildings += b_count
                 coins_to_gain = 2 * total_wheat_buildings
-                coins_to_gain *= building_info.working
-                self.players[current_player_id].coins += coins_to_gain
+                coins_to_gain *= building_count
+                current_player.coins += coins_to_gain
 
-            case "cheese_factory":
+            case Building.CHEESE_FACTORY:
                 total_cow_buildings = 0
-                for b_name, b_info in self.players[
-                    current_player_id
-                ].establishments.items():
-                    if primary_industry_dict.get(b_name, "") == "cow":
-                        total_cow_buildings += b_info.working
+                for b_name, b_count in current_player.buildings.items():
+                    if primary_industry_dict.get(b_name, "") == BuildingType.COW:
+                        total_cow_buildings += b_count
                 coins_to_gain = 3 * total_cow_buildings
-                coins_to_gain *= building_info.working
-                self.players[current_player_id].coins += coins_to_gain
+                coins_to_gain *= building_count
+                current_player.coins += coins_to_gain
 
-            case "furniture_factory":
+            case Building.FURNITURE_FACTORY:
                 total_gear_buildings = 0
-                for b_name, b_info in self.players[
-                    current_player_id
-                ].establishments.items():
-                    if primary_industry_dict.get(b_name, "") == "gear":
-                        total_gear_buildings += b_info.working
+                for b_name, b_count in current_player.buildings.items():
+                    if primary_industry_dict.get(b_name, "") == BuildingType.GEAR:
+                        total_gear_buildings += b_count
                 coins_to_gain = 3 * total_gear_buildings
-                coins_to_gain *= building_info.working
+                coins_to_gain *= building_count
                 self.players[current_player_id].coins += coins_to_gain
 
-            case "stadium":
+            case Building.STADIUM:
                 reverse_player_order = self.get_reverse_player_order(current_player_id)
                 for player_id in reverse_player_order:
                     coins_to_take = 2
-                    coins_to_take *= building_info.working
+                    coins_to_take *= building_count
                     coins_to_take = min(coins_to_take, self.players[player_id].coins)
                     self.players[player_id].coins -= coins_to_take
                     self.players[current_player_id].coins += coins_to_take
-            case "tv_station":
+            case Building.TV_STATION:
                 target_player_id = kwargs["target_player_id"]
                 coins_to_take = 5
-                coins_to_take *= building_info.working
+                coins_to_take *= building_count
                 coins_to_take = min(coins_to_take, self.players[target_player_id].coins)
                 self.players[target_player_id].coins -= coins_to_take
                 self.players[current_player_id].coins += coins_to_take
-            case "business_center":
+            case Building.BUSINESS_CENTER:
                 target_player_id = kwargs["target_player_id"]
                 target_player_building = kwargs["target_player_building"]
                 current_player_building = kwargs["current_player_building"]
 
-                self.players[target_player_id].establishments[
+                self.players[target_player_id].building[
                     target_player_building
-                ].working -= 1
+                ] -= 1
 
-                b_info = self.players[target_player_id].establishments[
+                b_count = self.players[target_player_id].building[
                     target_player_building
                 ]
-                if b_info.working == 0:
-                    self.players[target_player_id].establishments.pop(
+                if b_count == 0:
+                    self.players[target_player_id].building.pop(
                         target_player_building
                     )
 
                 if (target_player_building
-                        in self.players[current_player_id].establishments):
+                        in self.players[current_player_id].buildings):
 
-                    self.players[current_player_id].establishments[
+                    self.players[current_player_id].buildings[
                         target_player_building
-                    ].working += 1
+                    ] += 1
                 else:
-                    self.players[current_player_id].establishments[
+                    self.players[current_player_id].buildings[
                         target_player_building
-                    ] = EstablishmentCount(working=1)
+                    ] = 1
 
-                b_info = self.players[current_player_id].establishments[
+                b_count = self.players[current_player_id].buildings[
                     current_player_building
                 ]
 
-                if b_info.working > 0:
-                    self.players[current_player_id].establishments[
+                if b_count > 0:
+                    self.players[current_player_id].buildings[
                         current_player_building
-                    ].working -= 1
+                    ] -= 1
 
-                b_info = self.players[current_player_id].establishments[
+                b_count = self.players[current_player_id].buildings[
                     current_player_building
                 ]
-                if b_info == EstablishmentCount(working=0):
-                    self.players[current_player_id].establishments.pop(
+                if b_count == 0:
+                    self.players[current_player_id].buildings.pop(
                         current_player_building)
 
-                if (
+                if current_player_building in self.players[target_player_id].buildings:
+                    self.players[target_player_id].buildings[
                         current_player_building
-                        in self.players[target_player_id].establishments
-                ):
-
-                    self.players[target_player_id].establishments[
-                        current_player_building
-                    ].working += 1
+                    ] += 1
                 else:
-                    self.players[target_player_id].establishments[
+                    self.players[target_player_id].building[
                         current_player_building
-                    ] = EstablishmentCount(working=1)
-            case "tuna_boat":
+                    ] = 1
+            case Building.TUNA_BOAT:
                 tuna_roll, _ = self.roll_dice(num_dice=2)
-                coins_to_gain = tuna_roll * building_info.working
+                coins_to_gain = tuna_roll * building_count
                 self.players[current_player_id].coins += coins_to_gain
-            case "flower_shop":
-                flower_gardens = self.players[current_player_id].establishments.get(
-                    "flower_garden",
-                    EstablishmentCount(working=0),
+            case Building.FLOWER_SHOP:
+                current_player.coins += building_count * current_player.buildings.get(
+                    Building.FLOWER_GARDEN,
+                    0,
                 )
-                flower_gardens = flower_gardens.working
-                coins_to_gain = flower_gardens * building_info.working
-                self.players[current_player_id].coins += coins_to_gain
-            case "food_warehouse":
+            case Building.FOOD_WAREHOUSE:
+
                 total_restaurants = 0
-                for b_name, b_info in self.players[
-                    current_player_id
-                ].establishments.items():
+                for b_name, b_count in current_player.building.items():
                     if b_name in restaurants_tuple:
-                        total_restaurants += b_info.working
-                coins_to_gain = total_restaurants * 2
-                coins_to_gain *= building_info.working
-                self.players[current_player_id].coins += coins_to_gain
-            case "sushi_bar":
+                        total_restaurants += b_count
+
+                current_player.coins += total_restaurants * building_count * 2
+            case Building.SUSHI_BAR:
                 target_player_id = kwargs["target_player_id"]
                 receiving_player_id = kwargs["receiving_player_id"]
                 coins_to_take = 3
-                if self.players[receiving_player_id].landmarks["shopping_mall"]:
+                if self.players[receiving_player_id].buildings[Building.SHOPPING_MALL]:
                     coins_to_take += 1
-                if not self.players[receiving_player_id].landmarks["harbor"]:
+                if not self.players[receiving_player_id].buildings[Building.HARBOR]:
                     coins_to_take = 0
                 coins_to_take *= (
                     self.players[receiving_player_id]
-                    .establishments["sushi_bar"]
-                    .working
+                    .buildings[Building.SUSHI_BAR]
                 )
                 coins_to_take = min(coins_to_take, self.players[target_player_id].coins)
                 self.players[target_player_id].coins -= coins_to_take
                 self.players[receiving_player_id].coins += coins_to_take
-            case "publisher":
+            case Building.PUBLISHER:
                 reverse_player_order = self.get_reverse_player_order(current_player_id)
                 for target_player_id in reverse_player_order:
                     coins_to_take = 0
-                    for b_name, b_info in self.players[
+                    for b_name, b_count in self.players[
                         target_player_id
-                    ].establishments.items():
+                    ].building.items():
                         if (
                                 b_name in restaurants_tuple
-                                or secondary_industry_dict.get(b_name, "") == "bread"
+                                or secondary_industry_dict.get(b_name, "") == BuildingType.BREAD
                         ):
-                            coins_to_take += b_info.working
-                    coins_to_take *= building_info.working
+                            coins_to_take += b_count
+                    coins_to_take *= building_count
                     coins_to_take = min(
                         coins_to_take, self.players[target_player_id].coins
                     )
                     self.players[target_player_id].coins -= coins_to_take
                     self.players[current_player_id].coins += coins_to_take
-            case "tax_office":
+            case Building.TAX_OFFICE:
                 reverse_player_order = self.get_reverse_player_order(current_player_id)
                 for target_player_id in reverse_player_order:
                     if self.players[target_player_id].coins >= 10:
                         coins_to_take = math.floor(
                             self.players[target_player_id].coins / 2
                         )
-                        coins_to_take *= building_info.working
+                        coins_to_take *= building_count
                         self.players[target_player_id].coins -= coins_to_take
                         self.players[current_player_id].coins += coins_to_take
             case _:
@@ -402,17 +371,18 @@ class Game(object):
     def activate_cards(self, current_player_id: int, roll: int) -> None:
         """Activate cards based on dice roll."""
         # red goes first
+        current_player = self.players[current_player_id]
         reverse_player_order = self.get_reverse_player_order(current_player_id)
         for player_id in reverse_player_order:
-            has_shopping_mall = self.players[player_id].landmarks["shopping_mall"]
-            for building_name, building_info in self.players[
+            has_shopping_mall = self.players[player_id].buildings[Building.SHOPPING_MALL]
+            for building_name, building_count in self.players[
                 player_id
-            ].establishments.items():
+            ].buildings.items():
                 if self.players[current_player_id].coins == 0:
                     continue
                 if building_name not in restaurants_tuple:
                     continue
-                if building_info.working == 0:
+                if building_count == 0:
                     continue
                 if roll not in activation_dict[building_name]["roll"]:
                     continue
@@ -423,138 +393,137 @@ class Game(object):
                         "receiving_player_id": player_id,
                     }
                     self.activate_special_card(
-                        building_name, -1, building_info, **kwargs
+                        building_name, -1, building_count, **kwargs
                     )
                     continue
 
                 if has_shopping_mall:
                     coins_to_take += 1
-                coins_to_take *= building_info.working
+                coins_to_take *= building_count
                 coins_to_take = min(
                     coins_to_take, self.players[current_player_id].coins
                 )
                 self.players[current_player_id].coins -= coins_to_take
                 print(
-                    f"{current_player_id=} lost {coins_to_take=}, current player coins: {self.players[current_player_id].coins}"
+                    f"{current_player_id=} lost {coins_to_take=}, "
+                    f"current player coins: {self.players[current_player_id].coins}"
                 )
                 self.players[player_id].coins += coins_to_take
                 print(
                     f"{player_id=} gain {coins_to_take=}, current player coins: {self.players[player_id].coins}"
                 )
 
-        has_shopping_mall = self.players[current_player_id].landmarks["shopping_mall"]
-        for building_name, building_info in self.players[
+        has_shopping_mall = self.players[current_player_id].buildings[Building.SHOPPING_MALL]
+        for building_name, building_count in self.players[
             current_player_id
-        ].establishments.items():
+        ].buildings.items():
             if building_name not in secondary_industry_dict:
                 continue
             if roll not in activation_dict[building_name]["roll"]:
                 continue
-            if building_info.working == 0:
+            if building_count == 0:
                 continue
 
             coins_to_take = activation_dict[building_name]["value"]
             if coins_to_take == "special":
                 self.activate_special_card(
-                    building_name, current_player_id, building_info
+                    building_name, current_player_id, building_count
                 )
                 continue
 
-            if has_shopping_mall and secondary_industry_dict[building_name] == "bread":
+            if has_shopping_mall and secondary_industry_dict[building_name] == BuildingType.BREAD:
                 coins_to_take += 1
 
-            coins_to_take *= building_info.working
+            coins_to_take *= building_count
             self.players[current_player_id].coins += coins_to_take
 
         # blue goes next
         for player_id in self.players:
-            for building_name, building_info in self.players[
+            for building_name, building_count in self.players[
                 player_id
-            ].establishments.items():
+            ].building.items():
                 if building_name not in primary_industry_dict:
                     continue
-                if building_info.working == 0:
+                if building_count == 0:
                     continue
                 if roll not in activation_dict[building_name]["roll"]:
                     continue
 
                 coins_to_take = activation_dict[building_name]["value"]
                 if coins_to_take == "special":
-                    self.activate_special_card(building_name, player_id, building_info)
+                    self.activate_special_card(building_name, player_id, building_count)
                     continue
 
-                coins_to_take *= building_info.working
+                coins_to_take *= building_count
                 self.players[player_id].coins += coins_to_take
 
         # purple goes last
-        for building_name in self.players[current_player_id].major_establishments:
-            if building_name == "business_center":
+        for building_name in major_establishments_tuple:
+            if current_player.buildings.get(building_name, 0) == 0:
+                continue
+            if building_name == Building.BUSINESS_CENTER:
                 continue
             if roll not in activation_dict[building_name]["roll"]:
                 continue
 
             kwargs = {}
-            if building_name == "tv_station":
-                kwargs["target_player_id"] = self.get_target_player_id(
-                    current_player_id
-                )
+            if building_name == Building.TV_STATION:
+                kwargs["target_player_id"] = current_player.decide_target_tv_station()
 
             self.activate_special_card(
                 building_name,
                 current_player_id,
-                EstablishmentCount(working=1),
+                1,
                 **kwargs,
             )
 
         # special treatment for business center
         if (
-                "business_center" in self.players[current_player_id].major_establishments
-                and roll in activation_dict["business_center"]["roll"]
+                Building.BUSINESS_CENTER in current_player.buildings
+                and roll in activation_dict[Building.BUSINESS_CENTER]["roll"]
         ):
             kwargs: dict[str, Union[int, str]] = {
-                "target_player_id": self.get_target_player_id(current_player_id)
+                "target_player_id": current_player.decide_target_business_center()
             }
             choose_from = [
                 key
                 for key in self.players[
                     int(kwargs["target_player_id"])
-                ].establishments.keys()
-                if self.players[int(kwargs["target_player_id"])]
-                   .establishments[key]
-                   .working
-                   > 0
+                ].buildings.keys()
+                if self.players[int(kwargs["target_player_id"])].buildings[key] > 0
 
             ]
             kwargs["target_player_building"] = random.choice(choose_from)
             kwargs["current_player_building"] = random.choice(
                 list(
                     key
-                    for key in self.players[current_player_id].establishments.keys()
-                    if self.players[current_player_id].establishments[key].working > 0
+                    for key in self.players[current_player_id].buildings.keys()
+                    if self.players[current_player_id].buildings[key] > 0
 
                 )
             )
             self.activate_special_card(
-                "business_center",
+                Building.BUSINESS_CENTER,
                 current_player_id,
-                EstablishmentCount(working=1),
+                1,
                 **kwargs,
             )
 
     def clean_empty_cards(self) -> None:
         for player_id in self.players:
             to_pop = []
-            for building_name, building_info in self.players[
+            for building_name, building_count in self.players[
                 player_id
-            ].establishments.items():
-                if building_info == EstablishmentCount(working=0):
+            ].building.items():
+                if building_count == 0:
                     to_pop.append(building_name)
             for building_name in to_pop:
-                self.players[player_id].establishments.pop(building_name)
+                self.players[player_id].buildings.pop(building_name)
 
     def take_turn(self) -> None:
         """Simulate one turn for the current player."""
-        current_player_id = self.current_player
+        current_player_id = self.current_player_id
+        current_player = self.players[current_player_id]
         is_double = False
         self.current_turn += 1
         print(f"START OF TURN {self.current_turn}")
@@ -562,28 +531,17 @@ class Game(object):
             print(f"\t{player_id=}, coins: {self.players[player_id].coins}")
         if not self.players[current_player_id].is_first_turn:
             # Step 1: Roll Dice
-            num_dice = (
-                1
-                if not self.players[current_player_id].landmarks["train_station"]
-                else random.choice([1, 2])
-            )
+            num_dice = current_player.decide_dice()
             roll, is_double = self.roll_dice(num_dice)
             print(
                 f"Player {current_player_id} rolled {roll} {'(which is double)' if is_double else ''}."
             )
 
             # Step 2: player can choose to reroll if they have radio tower
-            if self.players[current_player_id].landmarks["radio_tower"]:
-                do_reroll = bool(random.random() < 0.5)
+            if current_player.buildings[Building.RADIO_TOWER]:
+                do_reroll = current_player.decide_reroll()
                 if do_reroll:
                     print(f"Player {current_player_id} chose to reroll")
-                    num_dice = (
-                        1
-                        if not self.players[current_player_id].landmarks[
-                            "train_station"
-                        ]
-                        else random.choice([1, 2])
-                    )
                     roll, is_double = self.roll_dice(num_dice)
                     print(
                         f"Player {current_player_id} rolled {roll} {'(which is double)' if is_double else ''}."
@@ -602,61 +560,48 @@ class Game(object):
             else self.players[current_player_id].coins
         )
 
-        # Step 5: Buy a card (randomly for now)
+        # Step 5: Buy a card
         possible_purchases = [
             card
             for card, count in self.market.items()
-            if building_cost[card] <= self.players[current_player_id].coins
+            if building_cost[card] <= current_player.coins
                and count > 0
-               and not self.players[current_player_id].major_establishments.get(
-                card, False
-            )
-               and not self.players[current_player_id].landmarks.get(card, False)
+               and not current_player.buildings.get(card, 0) == player_limit[card]
         ]
-        print(f"{possible_purchases=}")
+        print(f"{possible_purchases}")
         has_built = False
         if possible_purchases:
-            purchase = random.choice(possible_purchases)
+            purchase = current_player.decide_purchase(possible_purchases)
             self.market[purchase] -= 1
-            self.players[current_player_id].coins -= building_cost[purchase]
-            if purchase in landmarks_tuple:
-                self.players[current_player_id].landmarks[purchase] = True
-            elif purchase in major_establishments_tuple:
-                self.players[current_player_id].major_establishments[purchase] = True
-            else:
-                if purchase not in self.players[current_player_id].establishments:
-                    self.players[current_player_id].establishments[purchase] = (
-                        EstablishmentCount(
-                            working=1
-                        )
-                    )
-                else:
-                    self.players[current_player_id].establishments[
-                        purchase
-                    ].working += 1
+            current_player.coins -= building_cost[purchase]
+            current_player.buildings[purchase] = current_player.buildings.get(purchase,0) + 1
             has_built = True
             print(f"Player {current_player_id} bought {purchase}.")
 
         # Step 7: airport trigger
-        if not has_built and self.players[current_player_id].landmarks["airport"]:
-            self.players[current_player_id].coins += 10
+        if not has_built and current_player.buildings[Building.AIRPORT]:
+            current_player.coins += 10
 
         for player_id in self.players:
             print(
-                f"\t{player_id=}, coins: {self.players[player_id].coins}, landmarks: {self.players[player_id].landmarks}"
+                f"\t{player_id=}, coins: {self.players[player_id].coins}, "
+                f"buildings: {self.players[player_id].buildings}"
             )
-        if is_double and self.players[current_player_id].landmarks["amusement_park"]:
-            # no reason not to take a second turn
+        if is_double and current_player.buildings[Building.AMUSEMENT_PARK]:
+            # no reason not to take a second turn (LIE)
             pass
         else:
-            self.current_player = (self.current_player + 1) % self.n_players
+            self.current_player_id = (self.current_player_id + 1) % self.n_players
 
     def is_game_over(self):
         """Check if a player has won."""
         for player_id in self.players:
-            if all(
-                    self.players[player_id].landmarks.values()
-            ):  # All landmarks completed
+            win = True
+            for landmark in landmarks_tuple:
+                if not self.players[player_id].buildings[landmark]:
+                    win = False
+                    break
+            if win:
                 return True, player_id
         return False, -1
 
@@ -673,22 +618,3 @@ class Game(object):
     def train_players(self):
         for player in self.players:
             player.train_ai()
-
-    def get_full_record_headers(self):
-        """
-		game#, turn#, buildings, coins, win for each player
-		2 + 4*(18+2) = 82
-		"""
-        header = ['game_id', 'turn_id']
-        for i in range(4):
-            header += [('p%d_' % i) + x for x in (BUILDING_ORDER + ['coins', 'win'])]
-        return header
-
-    def record_full_game_state(self):
-        # the completed boolean will
-        vals = [self.id, self.turn + self.completed]
-        for player in self.players:
-            for building in BUILDING_ORDER:
-                vals.append(player.buildings[building])
-            vals += [player.coins, player.win]
-        self.full_record_writer.writerow(vals)

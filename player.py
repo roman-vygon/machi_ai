@@ -1,11 +1,12 @@
 from copy import deepcopy
 from functools import reduce
-
+from constants import player_limit
 import numpy as np
 from numpy.random import choice as rchoice
 
+from Building import Building
 from EstablishmentCount import EstablishmentCount
-from constants import BUILDING_VECTOR_TEMPLATE, BUILDING_ORDER
+from constants import BUILDING_VECTOR_TEMPLATE
 from player_ai import PlayerAI
 
 use_max_probability = True
@@ -41,9 +42,10 @@ def choose_from_probs(probs, constraint_mask=None):
 class Player:
     id: int
     coins: int
-    major_establishments: dict[str, bool]
-    landmarks: dict[str, bool]
-    establishments: dict[str, EstablishmentCount]
+    buildings: dict[Building, int]
+    # major_establishments: dict[str, bool]
+    # landmarks: dict[str, bool]
+    # establishments: dict[str, EstablishmentCount]
     is_first_turn: bool = True
     AI: PlayerAI
 
@@ -55,6 +57,10 @@ class Player:
         """this vectorizes the number of buildings in each category a player has;
         only the number of coins is represented as an integer"""
         building_vector = deepcopy(BUILDING_VECTOR_TEMPLATE)
+        for building in Building:
+            vector = [0] * player_limit[building]
+            for i in range(self.buildings[building]):
+                vector[i] = 1
         for i, building in enumerate(BUILDING_ORDER):
             building_vector[i][self.buildings[building]] = 1
         flat_vector = [x for sub in building_vector for x in sub]
@@ -66,28 +72,36 @@ class Player:
         return reduce(list.__add__, [self.get_next_player(offset).serialize_data() for offset in range(4)])
 
 
-"""
 class Player(object):
+    """
+    Represents a player in the game, managing their state, actions, and AI behavior.
+    """
+
     def __init__(self, game, order, name=''):
-        #don't do this in production code
-        #changes the probability behavior of the choose_from_probs() function
+        """
+        Initializes a Player instance.
+
+        Args:
+            game: The game instance the player is part of.
+            order: The player's turn order in the game.
+            name: Optional; the model name or identifier for the player.
+        """
+        # Don't do this in production code; modifies global behavior of probability functions
         global use_max_probability
         global prob_mod
         use_max_probability = game.use_max_probability
-        prob_mod = game.prob_mod 
-        self.game = game 
+        prob_mod = game.prob_mod
+        self.game = game
         self.buildings = deepcopy(starting_buildings)
         self.coins = 0
         self.order = order
         self.shared_ai = False
-        #name refers to model name
-        self.name=name
-        #this will not change between games
-        self.id = order 
+        self.name = name
+        self.id = order  # Unique identifier for the player
         self.win = 0
         self.extra_turn = False
-        self.double=False
-        #
+        self.double = False
+        # History tracking
         self.dice_history = []
         self.dice_history_turn = []
         self.dice_history_win = []
@@ -103,25 +117,35 @@ class Player(object):
         self.reroll_history = []
         self.reroll_history_turn = []
         self.reroll_history_win = []
-        #AI
+        # AI
         self.AI = PlayerAI(self)
 
     def initialize_ai(self):
+        """
+        Initializes the player's AI, preparing it for decision-making.
+        """
         self.AI.initialize_ai()
 
     def roll_dice(self):
-        dice = [randint(1,6) for _ in range(self.roll)]
-        if self.roll==2 and dice[0]==dice[1]:
-            self.double=True
+        """
+        Rolls dice for the player's turn and calculates the roll value.
+        Sets the `double` attribute if a double is rolled with two dice.
+        """
+        dice = [randint(1, 6) for _ in range(self.roll)]
+        if self.roll == 2 and dice[0] == dice[1]:
+            self.double = True
         else:
-            #for rerolls
-            self.double=False
+            self.double = False
         self.roll_value = sum(dice)
         if self.game.record_game:
-            self.game.game_record_file.write('ROLL: player %d rolls a %d %s with %d dice\n' % (self.order, self.roll_value, str(dice), self.roll))
-
+            self.game.game_record_file.write(
+                f'ROLL: player {self.order} rolls a {self.roll_value} {str(dice)} with {self.roll} dice\n'
+            )
 
     def update_win_history(self):
+        """
+        Updates the win history for all recorded player actions.
+        """
         self.dice_history_win += [self.win] * (len(self.dice_history) - len(self.dice_history_win))
         self.buy_history_win += [self.win] * (len(self.buy_history) - len(self.buy_history_win))
         self.swap_history_win += [self.win] * (len(self.swap_history) - len(self.swap_history_win))
@@ -129,306 +153,160 @@ class Player(object):
         self.reroll_history_win += [self.win] * (len(self.reroll_history) - len(self.reroll_history_win))
 
     def reset_game(self, game, order):
-        self.game = game 
-        self.AI.game = game 
+        """
+        Resets the player's state for a new game.
+
+        Args:
+            game: The new game instance.
+            order: The player's new turn order.
+
+        Returns:
+            The reset Player instance.
+        """
+        self.game = game
+        self.AI.game = game
         self.buildings = deepcopy(starting_buildings)
         self.coins = 3
         self.order = order
         self.win = 0
-        return self 
+        return self
 
     def train_ai(self, reset=False):
-        ""trains own 4 AI, and then resets history if desired""
+        """
+        Trains the player's AI and optionally resets action history.
+
+        Args:
+            reset: Boolean indicating whether to reset the player's action history.
+        """
         if not self.shared_ai:
             self.AI.train()
         elif self.id == self.AI.shared.player_id:
             self.AI.train()
         if reset:
-            self.dice_history = []
-            self.dice_history_turn = []
-            self.buy_history = []
-            self.buy_history_turn = []
-            self.steal_history = []
-            self.steal_history_turn = []
-            self.swap_history = []
-            self.swap_history_turn = []
-            self.reroll_history = []
-            self.reroll_history_turn = []
-            self.dice_history_win = []
-            self.buy_history_win = []
-            self.steal_history_win = []
-            self.swap_history_win = []
-            self.reroll_history_win = []
+            self.flush_history(flush_shared=False)
 
     def flush_history(self, flush_shared=True):
-        ""use for memory purposes and when some data might be irrelevant""
-        self.dice_history = []
-        self.dice_history_turn = []
-        self.buy_history = []
-        self.buy_history_turn = []
-        self.steal_history = []
-        self.steal_history_turn = []
-        self.swap_history = []
-        self.swap_history_turn = []
-        self.reroll_history = []
-        self.reroll_history_turn = []
-        self.dice_history_win = []
-        self.buy_history_win = []
-        self.steal_history_win = []
-        self.swap_history_win = []
-        self.reroll_history_win = []
+        """
+        Clears the player's action history to save memory or remove irrelevant data.
+
+        Args:
+            flush_shared: Whether to also flush the shared AI's history.
+        """
+        self.dice_history.clear()
+        self.dice_history_turn.clear()
+        self.buy_history.clear()
+        self.buy_history_turn.clear()
+        self.steal_history.clear()
+        self.steal_history_turn.clear()
+        self.swap_history.clear()
+        self.swap_history_turn.clear()
+        self.reroll_history.clear()
+        self.reroll_history_turn.clear()
+        self.dice_history_win.clear()
+        self.buy_history_win.clear()
+        self.steal_history_win.clear()
+        self.swap_history_win.clear()
+        self.reroll_history_win.clear()
         if self.shared_ai and flush_shared:
-            self.AI.shared.dice_history = []
-            self.AI.shared.dice_history_turn = []
-            self.AI.shared.buy_history = []
-            self.AI.shared.buy_history_turn = []
-            self.AI.shared.steal_history = []
-            self.AI.shared.steal_history_turn = []
-            self.AI.shared.swap_history = []
-            self.AI.shared.swap_history_turn = []
-            self.AI.shared.reroll_history = []
-            self.AI.shared.reroll_history_turn = []
-            self.AI.shared.dice_history_win = []
-            self.AI.shared.buy_history_win = []
-            self.AI.shared.steal_history_win = []
-            self.AI.shared.swap_history_win = []
-            self.AI.shared.reroll_history_win = []
-
-    
-
+            self.AI.shared.flush_history()
 
     def get_next_player(self, offset=1):
+        """
+        Gets the next player in turn order, offset by the specified number of players.
+
+        Args:
+            offset: The number of players to skip.
+
+        Returns:
+            The next Player instance in turn order.
+        """
         return self.game.get_next_player(self, offset)
-
-    def take_turn(self):
-        self.double=False
-        #decide whether to roll 1 or 2 dice, if possible
-        self.decide_dice()
-        self.roll_dice()
-        #decide if you want to reroll, if possible
-        self.decide_reroll()
-        if self.reroll:
-            self.roll_dice()
-        #now perform actions related to each color
-
-        #red
-        self.game.activate_red(self)
-
-        #green
-        self.coins += self.calculate_green()
-
-        #blue
-        self.game.activate_blue(self)
-
-        #purple
-        self.calculate_purple()
-
-        #coin status update if game is recorded
-        if self.game.record_game:
-            self.game.game_record_file.write('COINS: player %d has %d coins\n' % (self.order, self.coins))
-
-        #buy
-        self.decide_buy()
-        if self.buy_choice <> 19:
-            self.buildings[BUILDING_ORDER[self.buy_choice]] += 1
-            self.game.building_supply[BUILDING_ORDER[self.buy_choice]] -= 1
-            self.coins -= building_cost[BUILDING_ORDER[self.buy_choice]]
-            if self.game.record_game:
-                self.game.game_record_file.write('BUY: player %d bought a(n) %s (now has %d of them)\n' % 
-                    (self.order, 
-                    BUILDING_ORDER[self.buy_choice],
-                    self.buildings[BUILDING_ORDER[self.buy_choice]]))
-
-        elif self.game.record_game:
-            self.game.game_record_file.write('BUY: player %d chooses not to buy anything\n' % self.order )
-
-        #end
-        if self.double and self.buildings.amusement_park == 1:
-            self.extra_turn = True 
-            if self.game.record_game:
-                self.game.game_record_file.write('EXTRA TURN: player %d gets an extra turn!\n' % self.order)
-
-        self.check_if_win()
 
     def decide_dice(self):
         if self.buildings['station'] == 0:
-            self.roll=1
+            self.roll = 1
             return 0
         probs = self.AI.eval_dice()
         choice = choose_from_probs(probs)
-        if choice==0:
+        if choice == 0:
             roll = 2
         else:
             roll = 1
-        self.roll = roll 
+        self.roll = roll
         self.AI.record_dice()
         return 0
 
     def decide_reroll(self):
-        #note that you must reroll the same number of dice you originally rolled
-        #yes, this is from the creators
+        # note that you must reroll the same number of dice you originally rolled
+        # yes, this is from the creators
         if self.buildings['radio_tower'] == 0:
             self.reroll = 0
             return 0
         self.prev_roll_value = self.roll_value
         probs = self.AI.eval_reroll()
         choice = choose_from_probs(probs)
-        if choice==0:
+        if choice == 0:
             self.reroll = 1
         else:
             self.reroll = 0
-        if self.reroll==1 and self.game.record_game:
+        if self.reroll == 1 and self.game.record_game:
             self.game.game_record_file.write("REROLL: player %d is rerolling!\n" % self.order)
         self.AI.record_reroll()
         return 0
 
     def decide_steal(self):
-        ""
+        """
         returns the offset of the player from whombst coin should be stolen
-        ""
+        """
         probs = self.AI.eval_steal()
         choice = choose_from_probs(probs)
         self.victim = self.get_next_player(choice + 1)
-        #index is used for self.AI.record_steal()
+        # index is used for self.AI.record_steal()
         self.victim_index = choice + 1
 
     def decide_swap(self):
         self.create_swap_mask()
         probs = self.AI.eval_swap()
-        self.swap_choice = choice = choose_from_probs(probs, constraint_mask = self.swap_mask)
+        self.swap_choice = choice = choose_from_probs(probs, constraint_mask=self.swap_mask)
         self.swap_opponent_offset = 1 + (choice // 144)
-        self.swap_opponent_building = ((choice % 144) // 12 )
+        self.swap_opponent_building = ((choice % 144) // 12)
         self.swap_self_building = (choice % 12)
         self.AI.record_swap()
-        
 
     def decide_buy(self):
         self.create_buy_mask()
-        probs = self.AI.eval_buy() 
-        self.buy_choice =  choose_from_probs(probs, constraint_mask = self.buy_mask)
+        probs = self.AI.eval_buy()
+        self.buy_choice = choose_from_probs(probs, constraint_mask=self.buy_mask)
         self.AI.record_buy()
-
-    def calculate_green(self):
-        if self.roll_value in [2,3]:
-            val = self.buildings.bakery
-            if self.buildings.shopping_mall==1:
-                val = 2 * val 
-            if self.game.record_game and val > 0:
-                self.game.game_record_file.write('BAKERY: player %d receives %d coins (now has %d)\n' % (self.order, val, self.coins + val))
-            return val 
-        if self.roll_value == 4:
-            val = self.buildings.convenience_store 
-            if self.buildings.shopping_mall==1:
-                val = 4 * val 
-            else:
-                val = 3 * val 
-            if self.game.record_game and val > 0:
-                self.game.game_record_file.write('CONVENIENCE STORE: player %d receives %d coins (now has %d)\n' % (self.order, val, self.coins + val))
-            return val 
-        if self.roll_value == 7:
-            val = 3 * self.buildings.cheese_factory * self.buildings.ranch 
-            if self.game.record_game and val > 0:
-                self.game.game_record_file.write('RANCH: player %d receives %d coins (now has %d)\n' % (self.order, val, self.coins + val ))
-            return val 
-        if self.roll_value == 8:
-            val = 3 * self.buildings.furniture_factory * (self.buildings.mine + self.buildings.forest)
-            if self.game.record_game and val > 0:
-                self.game.game_record_file.write('FURNITURE FACTORY: player %d receives %d coins (now has %d)\n' % (self.order, val, self.coins + val ))
-            return val 
-        if self.roll_value in [11, 12]:
-            val = 2 * self.buildings['fruit&veg_market'] * (self.buildings.wheat_field + self.buildings.apple_orchard)
-            if self.game.record_game and val > 0:
-                self.game.game_record_file.write('FRUIT&VEG MARKET: player %d receives %d coins (now has %d)\n' % (self.order, val, self.coins + val ))
-            return val 
-        return 0
-
-    def calculate_purple(self):
-        if self.roll_value != 6:
-            return 0 
-        #steal 2 coins from each other player
-        if self.buildings.stadium:
-            for i in range(1,4):
-                target_player = self.get_next_player(i)
-                coins_to_steal = min(target_player.coins, 2)
-                target_player.coins -= coins_to_steal 
-                self.coins += coins_to_steal 
-                if self.game.record_game and coins_to_steal > 0:
-                    self.game.game_record_file.write('STADIUM: player %d (now has %d) receives %d coins from player %d (now has %d)\n' % 
-                        (self.order, self.coins, coins_to_steal, target_player.order, target_player.coins))
-
-        #decide from whomst to steal
-        if self.buildings.tv_station:
-            self.decide_steal()
-            self.AI.record_steal()
-            theft_value = min(5, self.victim.coins)
-            self.victim.coins -= theft_value 
-            self.coins += theft_value 
-            if self.game.record_game and theft_value > 0:
-                self.game.game_record_file.write('TV STATION: player %d (now has %d) steals %d coins from player %d (now has %d)\n' % 
-                    (self.order, self.coins, theft_value, self.victim.order, self.victim.coins))
-
-        #decide what buildings to jack 
-        if self.buildings.business_center:
-            
-            self.decide_swap()
-            #comments below provided for reference to self.decide_swap()
-            #self.swap_opponent_offset = 1 + (choice // 144)
-            #self.swap_opponent_building = 1 + (choice % 144)
-            #self.swap_self_building = 1 + (choice % 12)
-            target_player = self.get_next_player(self.swap_opponent_offset)
-            self_building = SWAPPABLE_BUILDING_ORDER[self.swap_self_building]
-            opponent_building = SWAPPABLE_BUILDING_ORDER[self.swap_opponent_building]
-
-            #perform swap
-            self.buildings[self_building] -= 1
-            target_player.buildings[self_building] += 1
-            self.buildings[opponent_building] += 1
-            target_player.buildings[opponent_building] -= 1
+    def take_turn(self):
+        """
+        Executes the player's turn, including rolling dice, performing actions, and deciding purchases.
+        """
+        self.double = False
+        self.decide_dice()
+        self.roll_dice()
+        self.decide_reroll()
+        if self.reroll:
+            self.roll_dice()
+        self.game.activate_red(self)
+        self.coins += self.calculate_green()
+        self.game.activate_blue(self)
+        self.calculate_purple()
+        if self.game.record_game:
+            self.game.game_record_file.write(f'COINS: player {self.order} has {self.coins} coins\n')
+        self.decide_buy()
+        if self.buy_choice != 19:
+            self.buildings[BUILDING_ORDER[self.buy_choice]] += 1
+            self.game.building_supply[BUILDING_ORDER[self.buy_choice]] -= 1
+            self.coins -= building_cost[BUILDING_ORDER[self.buy_choice]]
             if self.game.record_game:
-                self.game.game_record_file.write('BUSINESS CENTER: player %d swapped a(n) %s for player %d''s %s!\n' % (self.order, self_building, target_player.order, opponent_building))
-
-        return 0 
-
-
-
-    def create_swap_mask(self):
-        ""
-        this determines which actions are allowed
-        ""
-        #SWAPPABLE_BUILDING_ORDER [key0, key1, ...]
-        #SWAPPABLE_BUILDING_INDEX {key:index}
-        #self_building_id + 12*opponent_building_id + 144*opponent_offset
-        mask = [0] * (12*36)
-        for self_building_id in range(12):
-            if self.buildings[SWAPPABLE_BUILDING_ORDER[self_building_id]] == 0:
-                continue
-            for opponent_building_id in range(12):
-                for opponent_offset in range(1,4):
-                    target_player = self.get_next_player(opponent_offset)
-                    if target_player.buildings[SWAPPABLE_BUILDING_ORDER[opponent_building_id]] == 0:
-                        continue
-                    else:
-                        mask[self_building_id + 12*opponent_building_id + (opponent_offset-1)*144] = 1
-        self.swap_mask = mask 
-
-    def create_buy_mask(self):
-        #not buying is always an option, hence the last entry is always 1
-        mask = [1] * 20
-        for i in range(19):
-            if self.coins < building_cost[BUILDING_ORDER[i]]:
-                mask[i] = 0
-            elif self.game.building_supply[BUILDING_ORDER[i]] == 0:
-                mask[i] = 0
-            elif self.buildings[BUILDING_ORDER[i]] == player_limit[BUILDING_ORDER[i]]:
-                mask[i] = 0
-        self.buy_mask = mask 
-
-
-    def check_if_win(self):
-        buildings = self.buildings 
-        if buildings.shopping_mall + buildings.station +  buildings.amusement_park + buildings.radio_tower == 4:
-            self.win = 1
-            return True 
-        return False 
-
-"""
+                self.game.game_record_file.write(
+                    f'BUY: player {self.order} bought a(n) {BUILDING_ORDER[self.buy_choice]} (now has {self.buildings[BUILDING_ORDER[self.buy_choice]]})\n'
+                )
+        elif self.game.record_game:
+            self.game.game_record_file.write(f'BUY: player {self.order} chooses not to buy anything\n')
+        if self.double and self.buildings.amusement_park == 1:
+            self.extra_turn = True
+            if self.game.record_game:
+                self.game.game_record_file.write(f'EXTRA TURN: player {self.order} gets an extra turn!\n')
+        self.check_if_win()

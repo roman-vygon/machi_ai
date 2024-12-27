@@ -1,49 +1,45 @@
 from frozendict import frozendict
 from Building import Building
+from BuildingType import BuildingType
 
-starting_buildings = frozendict(
-    {
-        Building.WHEAT_FIELD: (1, 0),
-        Building.BAKERY: (1, 0)
-    }
-)
+starting_buildings = {
+    Building.WHEAT_FIELD: 1,
+    Building.BAKERY: 1
+}
 
-building_cost: frozendict = frozendict(
-    {
-        Building.WHEAT_FIELD: 1,
-        Building.APPLE_ORCHARD: 3,
-        Building.RANCH: 1,
-        Building.FOREST: 3,
-        Building.MINE: 6,
-        Building.FRUIT_AND_VEGETABLE_MARKET: 2,
-        Building.CHEESE_FACTORY: 5,
-        Building.FURNITURE_FACTORY: 3,
-        Building.BAKERY: 1,
-        Building.CONVENIENCE_STORE: 2,
-        Building.CAFE: 2,
-        Building.FAMILY_RESTAURANT: 3,
-        Building.STADIUM: 6,
-        Building.TV_STATION: 7,
-        Building.BUSINESS_CENTER: 8,
-        Building.SHOPPING_MALL: 10,
-        Building.AMUSEMENT_PARK: 16,
-        Building.RADIO_TOWER: 22,
-        Building.AIRPORT: 30,
-        Building.TRAIN_STATION: 4,
-        Building.FLOWER_GARDEN: 2,
-        Building.MACKEREL_BOAT: 2,
-        Building.TUNA_BOAT: 5,
-        Building.FLOWER_SHOP: 1,
-        Building.FOOD_WAREHOUSE: 2,
-        Building.SUSHI_BAR: 2,
-        Building.PIZZA_JOINT: 1,
-        Building.HAMBURGER_STAND: 1,
-        Building.PUBLISHER: 5,
-        Building.TAX_OFFICE: 4,
-        Building.HARBOR: 2
-    }
-)
-
+building_cost: dict[Building, int] = {
+    Building.WHEAT_FIELD: 1,
+    Building.APPLE_ORCHARD: 3,
+    Building.RANCH: 1,
+    Building.FOREST: 3,
+    Building.MINE: 6,
+    Building.FRUIT_AND_VEGETABLE_MARKET: 2,
+    Building.CHEESE_FACTORY: 5,
+    Building.FURNITURE_FACTORY: 3,
+    Building.BAKERY: 1,
+    Building.CONVENIENCE_STORE: 2,
+    Building.CAFE: 2,
+    Building.FAMILY_RESTAURANT: 3,
+    Building.STADIUM: 6,
+    Building.TV_STATION: 7,
+    Building.BUSINESS_CENTER: 8,
+    Building.SHOPPING_MALL: 10,
+    Building.AMUSEMENT_PARK: 16,
+    Building.RADIO_TOWER: 22,
+    Building.AIRPORT: 30,
+    Building.TRAIN_STATION: 4,
+    Building.FLOWER_GARDEN: 2,
+    Building.MACKEREL_BOAT: 2,
+    Building.TUNA_BOAT: 5,
+    Building.FLOWER_SHOP: 1,
+    Building.FOOD_WAREHOUSE: 2,
+    Building.SUSHI_BAR: 2,
+    Building.PIZZA_JOINT: 1,
+    Building.HAMBURGER_STAND: 1,
+    Building.PUBLISHER: 5,
+    Building.TAX_OFFICE: 4,
+    Building.HARBOR: 2
+}
 activation_dict = frozendict(
     {
         Building.WHEAT_FIELD: {"roll": (1,), "value": 1},
@@ -94,26 +90,26 @@ major_establishments_tuple = (
 
 primary_industry_dict = frozendict(
     {
-        Building.WHEAT_FIELD: "wheat",
-        Building.RANCH: "cow",
-        Building.FOREST: "gear",
-        Building.MINE: "gear",
-        Building.APPLE_ORCHARD: "wheat",
-        Building.FLOWER_GARDEN: "wheat",
-        Building.MACKEREL_BOAT: "boat",
-        Building.TUNA_BOAT: "boat",
+        Building.WHEAT_FIELD: BuildingType.WHEAT,
+        Building.RANCH: BuildingType.COW,
+        Building.FOREST: BuildingType.GEAR,
+        Building.MINE: BuildingType.GEAR,
+        Building.APPLE_ORCHARD: BuildingType.WHEAT,
+        Building.FLOWER_GARDEN: BuildingType.WHEAT,
+        Building.MACKEREL_BOAT: BuildingType.BOAT,
+        Building.TUNA_BOAT: BuildingType.BOAT,
     }
 )
 
 secondary_industry_dict = frozendict(
     {
-        Building.BAKERY: "bread",
-        Building.CONVENIENCE_STORE: "bread",
-        Building.CHEESE_FACTORY: "factory",
-        Building.FURNITURE_FACTORY: "factory",
-        Building.FRUIT_AND_VEGETABLE_MARKET: "fruit",
-        Building.FLOWER_SHOP: "bread",
-        Building.FOOD_WAREHOUSE: "factory",
+        Building.BAKERY: BuildingType.BREAD,
+        Building.CONVENIENCE_STORE: BuildingType.BREAD,
+        Building.CHEESE_FACTORY: BuildingType.FACTORY,
+        Building.FURNITURE_FACTORY: BuildingType.FACTORY,
+        Building.FRUIT_AND_VEGETABLE_MARKET: BuildingType.FRUIT,
+        Building.FLOWER_SHOP: BuildingType.BREAD,
+        Building.FOOD_WAREHOUSE: BuildingType.FACTORY,
     }
 )
 
@@ -140,7 +136,5 @@ for building in (
 ):
     player_limit[building] = 6
 
-
 # need to make sure vector is consistent
-BUILDING_VECTOR_TEMPLATE = [[0 for _ in range(player_limit[key] + 1)] for key in Building]
-
+# BUILDING_VECTOR_TEMPLATE = [[0 for _ in range(player_limit[key] + 1)] for key in Building]
